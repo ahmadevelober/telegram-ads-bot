@@ -215,4 +215,36 @@ router.get("/postback/ayet", async (req, res) => {
   res.send(result.ok ? "1" : result.reason ?? "error");
 });
 
+// ===================================================
+// Torox
+// Postback: GET /api/postback/torox
+// Params: user_id, amount, offer_id, offer_name, txid, security
+// ===================================================
+router.get("/postback/torox", async (req, res) => {
+  const { user_id, amount, offer_id, offer_name, txid, security } = req.query as Record<string, string>;
+  const secret = process.env["TOROX_SECRET"] ?? "";
+
+  if (secret) {
+    const expected = crypto
+      .createHash("md5")
+      .update(`${user_id}${amount}${txid}${secret}`)
+      .digest("hex");
+    if (security !== expected) {
+      res.status(403).send("invalid_security");
+      return;
+    }
+  }
+
+  const result = await creditUser({
+    userCode: user_id,
+    network: "Torox",
+    offerId: offer_id,
+    offerName: offer_name,
+    usdtAmount: parseFloat(amount) || 0,
+    transactionId: txid,
+  });
+
+  res.send(result.ok ? "1" : result.reason ?? "error");
+});
+
 export default router;

@@ -24,6 +24,9 @@ router.get("/earn/:userCode", async (req, res) => {
   const OFFERTORO_SITE = process.env["OFFERTORO_SITE_ID"] ?? "";
   const OFFERTORO_PLACEMENT = process.env["OFFERTORO_PLACEMENT_ID"] ?? "";
   const LOOTABLY_ID = process.env["LOOTABLY_PLACEMENT_ID"] ?? "";
+  const TOROX_SITE = process.env["TOROX_SITE_ID"] ?? "";
+  const TOROX_PLACEMENT = process.env["TOROX_PLACEMENT_ID"] ?? "";
+  const hasAny = !!(ADGATE_ID || OFFERTORO_SITE || LOOTABLY_ID || TOROX_SITE);
 
   const userName = user.firstName ?? user.username ?? "صديق";
   const userPoints = user.points;
@@ -117,19 +120,25 @@ router.get("/earn/:userCode", async (req, res) => {
 </div>
 
 <div class="tabs">
-  ${ADGATE_ID ? `<button class="tab active" onclick="showTab('adgate', this)">🏆 AdGate</button>` : ""}
-  ${OFFERTORO_SITE ? `<button class="tab ${!ADGATE_ID ? "active" : ""}" onclick="showTab('offertoro', this)">💎 Offertoro</button>` : ""}
+  ${TOROX_SITE ? `<button class="tab active" onclick="showTab('torox', this)">🔥 Torox</button>` : ""}
+  ${ADGATE_ID ? `<button class="tab ${!TOROX_SITE ? "active" : ""}" onclick="showTab('adgate', this)">🏆 AdGate</button>` : ""}
+  ${OFFERTORO_SITE ? `<button class="tab ${!TOROX_SITE && !ADGATE_ID ? "active" : ""}" onclick="showTab('offertoro', this)">💎 Offertoro</button>` : ""}
   ${LOOTABLY_ID ? `<button class="tab" onclick="showTab('lootably', this)">🎮 Lootably</button>` : ""}
-  ${!ADGATE_ID && !OFFERTORO_SITE && !LOOTABLY_ID ? `<button class="tab active">⚙️ الإعداد</button>` : ""}
+  ${!hasAny ? `<button class="tab active">⚙️ الإعداد</button>` : ""}
 </div>
 
+${TOROX_SITE ? `
+<div id="wall-torox" class="wall-container active">
+  <iframe src="https://www.torox.io/ifr/show/${TOROX_PLACEMENT}/${TOROX_SITE}/${userCode}" loading="lazy"></iframe>
+</div>` : ""}
+
 ${ADGATE_ID ? `
-<div id="wall-adgate" class="wall-container active">
+<div id="wall-adgate" class="wall-container ${!TOROX_SITE ? "active" : ""}">
   <iframe src="https://wall.adgaterewards.com/${ADGATE_ID}?uid=${userCode}" loading="lazy"></iframe>
 </div>` : ""}
 
 ${OFFERTORO_SITE ? `
-<div id="wall-offertoro" class="wall-container ${!ADGATE_ID ? "active" : ""}">
+<div id="wall-offertoro" class="wall-container ${!TOROX_SITE && !ADGATE_ID ? "active" : ""}">
   <iframe src="https://www.offertoro.com/ifr/show/${OFFERTORO_PLACEMENT}/${OFFERTORO_SITE}/${userCode}/" loading="lazy"></iframe>
 </div>` : ""}
 
@@ -138,11 +147,12 @@ ${LOOTABLY_ID ? `
   <iframe src="https://wall.lootably.com/?placementID=${LOOTABLY_ID}&uid=${userCode}" loading="lazy"></iframe>
 </div>` : ""}
 
-${!ADGATE_ID && !OFFERTORO_SITE && !LOOTABLY_ID ? `
+${!hasAny ? `
 <div id="wall-setup" class="wall-container active">
   <div class="setup-msg">
     ⚙️ <strong>لتفعيل الإعلانات التلقائية</strong><br/><br/>
-    يحتاج المدير إضافة معرّفات الشبكات في Secrets<br/>
+    أضف معرّف أي شبكة في Secrets:<br/><br/>
+    <code>TOROX_SITE_ID</code> + <code>TOROX_PLACEMENT_ID</code><br/>
     <code>ADGATE_PLACEMENT_ID</code><br/>
     <code>OFFERTORO_SITE_ID</code><br/>
     <code>LOOTABLY_PLACEMENT_ID</code>
