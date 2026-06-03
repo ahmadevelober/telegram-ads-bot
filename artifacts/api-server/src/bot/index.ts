@@ -195,6 +195,32 @@ bot.action(/^complete_(\d+)$/, async (ctx) => {
   }
 });
 
+// ===== شاهد إعلانات =====
+bot.hears("📺 شاهد إعلانات", async (ctx) => {
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramId, ctx.from.id)).limit(1);
+    if (!user) { await ctx.reply("❌ يرجى كتابة /start أولاً."); return; }
+
+    const domain = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0]?.trim() ?? "localhost";
+    const earnUrl = `https://${domain}/api/earn/${user.referralCode}`;
+
+    await ctx.reply(
+      `📺 *شاهد إعلانات واكسب نقاطاً تلقائياً!*\n\n` +
+      `🔄 النقاط تُضاف *فوراً* بعد إنجاز أي عرض — بدون ضغط أي زر.\n\n` +
+      `🌐 الشبكات المتاحة:\n` +
+      `• AdGate Media\n• Offertoro\n• Lootably\n\n` +
+      `👇 افتح الرابط وابدأ الكسب:`,
+      {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([[Markup.button.url("🚀 افتح صفحة الإعلانات", earnUrl)]]),
+      },
+    );
+  } catch (err) {
+    logger.error({ err }, "Error in earn page");
+    await ctx.reply("❌ حدث خطأ، حاول مجدداً.");
+  }
+});
+
 // ===== الإحالة =====
 bot.hears("👥 الإحالة", async (ctx) => {
   try {
