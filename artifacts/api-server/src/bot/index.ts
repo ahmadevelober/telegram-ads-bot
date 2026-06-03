@@ -105,6 +105,12 @@ function isAdmin(telegramId: number): boolean {
   return ADMIN_ID !== null && telegramId === ADMIN_ID;
 }
 
+function getMiniAppUrl(referralCode?: string): string {
+  const domain = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0]?.trim() ?? "";
+  const base = `https://${domain}/api/miniapp`;
+  return referralCode ? `${base}?ref=${referralCode}` : base;
+}
+
 // ===== /start =====
 bot.command("help", async (ctx) => {
   await ctx.reply(helpMessage(), { parse_mode: "Markdown" });
@@ -116,7 +122,22 @@ bot.start(async (ctx) => {
       ctx.from.id, ctx.from.first_name, ctx.from.last_name, ctx.from.username, ctx.startPayload || undefined,
     );
     const keyboard = isAdmin(ctx.from.id) ? adminKeyboard : mainKeyboard;
-    await ctx.reply(welcomeMessage(user, isNew), { parse_mode: "Markdown", ...keyboard });
+    const miniUrl = getMiniAppUrl();
+    await ctx.reply(
+      welcomeMessage(user, isNew),
+      {
+        parse_mode: "Markdown",
+        ...keyboard,
+      }
+    );
+    // زر Mini App مباشرةً بعد الترحيب
+    await ctx.reply(
+      `🎯 *اضغط الزر أدناه لفتح صفحة الكسب مباشرةً داخل تيليغرام!*`,
+      {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([[Markup.button.webApp("🚀 افتح صفحة الكسب", miniUrl)]]),
+      }
+    );
   } catch (err) {
     logger.error({ err }, "Error in /start");
     await ctx.reply("❌ حدث خطأ، حاول مجدداً.");
@@ -200,32 +221,23 @@ bot.action(/^complete_(\d+)$/, async (ctx) => {
   }
 });
 
-// ===== شاهد إعلانات =====
-bot.hears("📺 شاهد إعلانات", async (ctx) => {
+// ===== شاهد إعلانات / Mini App =====
+bot.hears(["📺 شاهد إعلانات", "🎯 ابدأ الكسب"], async (ctx) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramId, ctx.from.id)).limit(1);
     if (!user) { await ctx.reply("❌ يرجى كتابة /start أولاً."); return; }
-
-    const domain = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0]?.trim() ?? "localhost";
-    const earnUrl = `https://${domain}/api/earn/${user.referralCode}`;
-
+    const miniUrl = getMiniAppUrl();
     await ctx.reply(
-      `📺 *شاهد إعلانات واكسب نقاطاً تلقائياً!*\n\n` +
-      `⚡ النقاط تُضاف *فوراً* بعد كل إنجاز — بدون أي ضغط.\n\n` +
-      `🌐 *الشبكات المتاحة:*\n` +
-      `• ⚡ CPAlead — موافقة فورية\n` +
-      `• 🔥 Torox\n` +
-      `• 🏆 AdGate Media\n` +
-      `• 💎 Offertoro\n` +
-      `• 🎮 Lootably\n\n` +
-      `💡 كلما أنجزت أكثر، كسبت أكثر 💰`,
+      `🎯 *صفحة الكسب الأوتوماتيكية*\n\n` +
+      `⚡ النقاط تُضاف *فوراً* بعد كل إعلان — بدون أي ضغط.\n\n` +
+      `اضغط الزر لفتح الصفحة داخل تيليغرام مباشرةً 👇`,
       {
         parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([[Markup.button.url("🚀 افتح صفحة الإعلانات", earnUrl)]]),
+        ...Markup.inlineKeyboard([[Markup.button.webApp("🚀 افتح صفحة الكسب", miniUrl)]]),
       },
     );
   } catch (err) {
-    logger.error({ err }, "Error in earn page");
+    logger.error({ err }, "Error in miniapp");
     await ctx.reply("❌ حدث خطأ، حاول مجدداً.");
   }
 });
@@ -238,7 +250,14 @@ bot.hears("👥 الإحالة", async (ctx) => {
 
     const botInfo = await bot.telegram.getMe();
     const [{ count: referralCount }] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.referredBy, user.id));
-    await ctx.reply(referralMessage(user.referralCode, botInfo.username ?? "", referralCount), { parse_mode: "Markdown" });
+    const miniUrl = getMiniAppUrl(user.referralCode);
+    await ctx.reply(
+      referralMessage(user.referralCode, botInfo.username ?? "", referralCount),
+      {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([[Markup.button.webApp("🚀 افتح صفحة الكسب", miniUrl)]]),
+      }
+    );
   } catch (err) {
     logger.error({ err }, "Error in referral");
     await ctx.reply("❌ حدث خطأ، حاول مجدداً.");
@@ -588,7 +607,7 @@ bot.catch((err, ctx) => {
 
 export async function startBot(): Promise<void> {
   await initSettings();
-  await seedTrustedTasks();
+  // لا نبذر مهام خارجية تلقائياً — المستخدم يكسب عبر Mini App فقط
 
   // تسجيل قائمة الأوامر في تيليغرام
   try {
@@ -606,9 +625,21 @@ export async function startBot(): Promise<void> {
     );
 
     await bot.telegram.setMyShortDescription("💰 اكسب USDT من الإعلانات والمهام — تلقائي 100%");
-    logger.info("Bot commands and description set");
+
+    // Menu Button — يفتح Mini App مباشرةً
+    const domain = (process.env["REPLIT_DOMAINS"] ?? "").split(",")[0]?.trim() ?? "";
+    if (domain) {
+      await bot.telegram.setChatMenuButton({
+        menuButton: {
+          type: "web_app",
+          text: "🚀 ابدأ الكسب",
+          web_app: { url: `https://${domain}/api/miniapp` },
+        },
+      });
+    }
+    logger.info("Bot commands, description and menu button set");
   } catch (err) {
-    logger.warn({ err }, "Could not set bot commands/description");
+    logger.warn({ err }, "Could not set bot metadata");
   }
 
   bot.launch({ dropPendingUpdates: true });
