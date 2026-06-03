@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startBot } from "./bot/index";
 
 const rawPort = process.env["PORT"];
 
@@ -13,6 +14,12 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+if (process.env["TELEGRAM_BOT_TOKEN"]) {
+  startBot();
+} else {
+  logger.warn("TELEGRAM_BOT_TOKEN not set — bot will not start");
 }
 
 app.listen(port, (err) => {
