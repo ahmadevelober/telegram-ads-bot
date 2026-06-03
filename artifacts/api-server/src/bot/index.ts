@@ -20,6 +20,7 @@ import {
   taskMessage,
   referralMessage,
   commissionInfoMessage,
+  helpMessage,
 } from "./messages.js";
 
 const BOT_TOKEN = process.env["TELEGRAM_BOT_TOKEN"];
@@ -105,6 +106,10 @@ function isAdmin(telegramId: number): boolean {
 }
 
 // ===== /start =====
+bot.command("help", async (ctx) => {
+  await ctx.reply(helpMessage(), { parse_mode: "Markdown" });
+});
+
 bot.start(async (ctx) => {
   try {
     const { user, isNew } = await getOrCreateUser(
@@ -206,10 +211,14 @@ bot.hears("📺 شاهد إعلانات", async (ctx) => {
 
     await ctx.reply(
       `📺 *شاهد إعلانات واكسب نقاطاً تلقائياً!*\n\n` +
-      `🔄 النقاط تُضاف *فوراً* بعد إنجاز أي عرض — بدون ضغط أي زر.\n\n` +
-      `🌐 الشبكات المتاحة:\n` +
-      `• AdGate Media\n• Offertoro\n• Lootably\n\n` +
-      `👇 افتح الرابط وابدأ الكسب:`,
+      `⚡ النقاط تُضاف *فوراً* بعد كل إنجاز — بدون أي ضغط.\n\n` +
+      `🌐 *الشبكات المتاحة:*\n` +
+      `• ⚡ CPAlead — موافقة فورية\n` +
+      `• 🔥 Torox\n` +
+      `• 🏆 AdGate Media\n` +
+      `• 💎 Offertoro\n` +
+      `• 🎮 Lootably\n\n` +
+      `💡 كلما أنجزت أكثر، كسبت أكثر 💰`,
       {
         parse_mode: "Markdown",
         ...Markup.inlineKeyboard([[Markup.button.url("🚀 افتح صفحة الإعلانات", earnUrl)]]),
@@ -580,6 +589,28 @@ bot.catch((err, ctx) => {
 export async function startBot(): Promise<void> {
   await initSettings();
   await seedTrustedTasks();
+
+  // تسجيل قائمة الأوامر في تيليغرام
+  try {
+    await bot.telegram.setMyCommands([
+      { command: "start",  description: "🏠 ابدأ / القائمة الرئيسية" },
+      { command: "help",   description: "📖 دليل استخدام البوت" },
+    ]);
+
+    await bot.telegram.setMyDescription(
+      "🤖 بوت الكسب الأوتوماتيكي\n\n" +
+      "💰 اكسب نقاطاً من الإعلانات والمهام وتحويلها إلى USDT\n" +
+      "⚡ النقاط تُضاف تلقائياً فور إنجاز أي عرض\n" +
+      "🎁 30 نقطة مجاناً لكل صديق تدعوه\n\n" +
+      "اضغط /start للبدء!"
+    );
+
+    await bot.telegram.setMyShortDescription("💰 اكسب USDT من الإعلانات والمهام — تلقائي 100%");
+    logger.info("Bot commands and description set");
+  } catch (err) {
+    logger.warn({ err }, "Could not set bot commands/description");
+  }
+
   bot.launch({ dropPendingUpdates: true });
   logger.info("Telegram bot started (polling)");
   process.once("SIGINT", () => bot.stop("SIGINT"));
