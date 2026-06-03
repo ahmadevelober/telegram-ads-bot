@@ -642,8 +642,14 @@ export async function startBot(): Promise<void> {
     logger.warn({ err }, "Could not set bot metadata");
   }
 
-  bot.launch({ dropPendingUpdates: true });
+  // تشغيل polling مع إعادة تشغيل تلقائية عند الانقطاع
+  bot.launch({ dropPendingUpdates: true }).catch((err) => {
+    logger.error({ err }, "Bot polling stopped — إعادة تشغيل خلال 5 ثوانٍ");
+    setTimeout(() => startBot(), 5_000);
+  });
+
   logger.info("Telegram bot started (polling)");
+
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
