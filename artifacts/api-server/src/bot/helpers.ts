@@ -34,8 +34,8 @@ export function formatUsdt(usdt: number): string {
   return usdt.toFixed(4);
 }
 
-// نقاط الإحالة (50 نقطة = 0.05$)
-export const POINTS_PER_REFERRAL = 50;
+// نقاط الإحالة (30 نقطة = 3 سنت)
+export const POINTS_PER_REFERRAL = 30;
 
 // الحد الأدنى للسحب (1000 نقطة = 1$ USDT)
 export const MIN_WITHDRAWAL_POINTS = 1000;
