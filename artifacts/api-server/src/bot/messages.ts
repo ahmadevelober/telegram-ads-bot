@@ -1,4 +1,5 @@
 import type { User } from "@workspace/db";
+import { pointsToUsdt, formatUsdt, POINTS_PER_USDT, USER_COMMISSION, ADMIN_COMMISSION } from "./helpers.js";
 
 export function welcomeMessage(user: User, isNew: boolean): string {
   const name = user.firstName ?? user.username ?? "صديق";
@@ -6,22 +7,27 @@ export function welcomeMessage(user: User, isNew: boolean): string {
     return (
       `🎉 أهلاً وسهلاً ${name}!\n\n` +
       `مرحباً بك في بوت الربح من الإنترنت 🚀\n\n` +
+      `💡 *نظام النقاط:*\n` +
+      `1000 نقطة = 1$ USDT\n\n` +
       `يمكنك كسب النقاط عبر:\n` +
-      `📋 تنفيذ المهام\n` +
+      `📋 تنفيذ المهام من مواقع موثوقة\n` +
       `👁️ مشاهدة الإعلانات\n` +
       `👥 دعوة الأصدقاء (+50 نقطة لكل صديق)\n\n` +
-      `💡 اضغط على الأزرار أدناه للبدء!`
+      `اضغط على الأزرار أدناه للبدء! 👇`
     );
   }
   return `👋 أهلاً ${name}! اختر ما تريد من القائمة:`;
 }
 
 export function balanceMessage(points: number, referralCount: number): string {
+  const usdt = pointsToUsdt(points);
   return (
     `💰 *رصيدك الحالي*\n\n` +
     `🪙 النقاط: *${points.toLocaleString()}* نقطة\n` +
+    `💵 القيمة: *${formatUsdt(usdt)}$ USDT*\n` +
     `👥 الأصدقاء المدعوون: *${referralCount}*\n\n` +
-    `💡 الحد الأدنى للسحب: 1,000 نقطة`
+    `📊 سعر الصرف: 1000 نقطة = 1$ USDT\n` +
+    `💡 الحد الأدنى للسحب: 1,000 نقطة (1$)`
   );
 }
 
@@ -36,6 +42,8 @@ export function taskMessage(
     description: string;
     type: string;
     rewardPoints: number;
+    usdtValue: string | null;
+    source: string | null;
     url: string | null;
   },
   index: number,
@@ -50,11 +58,16 @@ export function taskMessage(
   };
   const emoji = typeEmoji[task.type] ?? "✅";
   const status = done ? "✅ مكتملة" : "⏳ لم تُنجز";
+  const usdtEarning = task.usdtValue
+    ? `≈ ${formatUsdt(parseFloat(task.usdtValue) * USER_COMMISSION)}$ USDT`
+    : "";
+  const sourceTag = task.source ? `🌐 المصدر: *${task.source}*\n` : "";
 
   return (
     `${emoji} *${task.title}*\n` +
     `📝 ${task.description}\n` +
-    `🏆 المكافأة: *${task.rewardPoints}* نقطة\n` +
+    `${sourceTag}` +
+    `🏆 مكافأتك: *${task.rewardPoints}* نقطة ${usdtEarning}\n` +
     `الحالة: ${status}\n` +
     `(${index}/${total})`
   );
@@ -71,7 +84,22 @@ export function referralMessage(
     `رابط الإحالة الخاص بك:\n` +
     `\`${link}\`\n\n` +
     `👫 الأصدقاء المدعوون: *${referralCount}*\n` +
-    `🎁 مكافأة كل صديق: *50* نقطة\n\n` +
+    `🎁 مكافأة كل صديق: *50* نقطة (0.05$ USDT)\n\n` +
     `شارك الرابط واربح مع كل صديق يسجل! 🚀`
+  );
+}
+
+export function commissionInfoMessage(): string {
+  const userPct = Math.round(USER_COMMISSION * 100);
+  const adminPct = Math.round(ADMIN_COMMISSION * 100);
+  return (
+    `📊 *نظام العمولة*\n\n` +
+    `🧮 سعر الصرف: *${POINTS_PER_USDT} نقطة = 1$ USDT*\n\n` +
+    `✂️ توزيع الأرباح:\n` +
+    `👤 المستخدم: *${userPct}%*\n` +
+    `🏦 المنصة: *${adminPct}%*\n\n` +
+    `مثال: مهمة قيمتها 0.01$:\n` +
+    `• أنت تكسب: ${Math.round(0.01 * USER_COMMISSION * POINTS_PER_USDT)} نقطة (0.007$)\n` +
+    `• المنصة: ${Math.round(0.01 * ADMIN_COMMISSION * POINTS_PER_USDT)} نقاط (0.003$)`
   );
 }
